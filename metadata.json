@@ -1,0 +1,5 @@
+{
+  "name": "Radiology Equipment Inventory System",
+  "description": "An enterprise-grade asset management system for medical imaging departments. It features a dashboard for equipment overview, detailed inventory tables, and an AI-powered natural language search to filter and find equipment information efficiently.",
+  "requestFramePermissions": []
+}
