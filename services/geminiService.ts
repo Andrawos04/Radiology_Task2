@@ -2,11 +2,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { EquipmentFilter } from '../types';
 
-if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY environment variable not set");
-}
+const getGeminiApiKey = () => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error("GEMINI_API_KEY environment variable not set");
+    }
+    return apiKey;
+};
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
 
 const filterSchema = {
     type: Type.OBJECT,
