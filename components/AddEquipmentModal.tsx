@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { EquipmentFormData, Equipment } from '../types';
-import { EQUIPMENT_TYPES, MANUFACTURERS, BUILDINGS, DEPARTMENTS, ROOMS, FUNDING_SOURCES, EQUIPMENT_TYPE_MAP, ROOM_MAP, DEPARTMENT_MAP } from '../constants';
+import { EQUIPMENT_TYPE_MAP, ROOM_MAP, DEPARTMENT_MAP } from '../constants';
+import { fetchReferenceData } from '../services/equipmentService';
 import Icon from './Icon';
 
 interface AddEquipmentModalProps {
@@ -47,6 +48,37 @@ const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ onClose, onSave, 
     
     const [selectedBuilding, setSelectedBuilding] = useState<string>('');
     const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+    const [referenceData, setReferenceData] = useState<{
+        buildings: any[];
+        departments: any[];
+        rooms: any[];
+        manufacturers: any[];
+        equipmentTypes: any[];
+        fundingSources: any[];
+    }>({
+        buildings: [],
+        departments: [],
+        rooms: [],
+        manufacturers: [],
+        equipmentTypes: [],
+        fundingSources: []
+    });
+    const [isLoadingData, setIsLoadingData] = useState(true);
+
+    // Load reference data on component mount
+    useEffect(() => {
+        const loadReferenceData = async () => {
+            try {
+                const data = await fetchReferenceData();
+                setReferenceData(data);
+            } catch (error) {
+                console.error('Failed to load reference data:', error);
+            } finally {
+                setIsLoadingData(false);
+            }
+        };
+        loadReferenceData();
+    }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -71,13 +103,13 @@ const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ onClose, onSave, 
     
     const filteredDepartments = useMemo(() => {
         if (!selectedBuilding) return [];
-        return DEPARTMENTS.filter(d => d.building_id === parseInt(selectedBuilding, 10));
-    }, [selectedBuilding]);
+        return referenceData.departments.filter(d => d.building_id === parseInt(selectedBuilding, 10));
+    }, [selectedBuilding, referenceData.departments]);
 
     const filteredRooms = useMemo(() => {
         if (!selectedDepartment) return [];
-        return ROOMS.filter(r => r.department_id === parseInt(selectedDepartment, 10));
-    }, [selectedDepartment]);
+        return referenceData.rooms.filter(r => r.department_id === parseInt(selectedDepartment, 10));
+    }, [selectedDepartment, referenceData.rooms]);
 
 
     const generateInventoryCode = useCallback(() => {
@@ -118,6 +150,17 @@ const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ onClose, onSave, 
         onSave(formData);
     };
 
+    if (isLoadingData) {
+        return (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-75 z-20 flex items-center justify-center p-4">
+                <div className="bg-white rounded-lg p-8 flex items-center space-x-4">
+                    <Icon name="spinner" className="w-8 h-8 text-brand-primary" />
+                    <span className="text-lg">Loading...</span>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 z-20 flex items-center justify-center p-4" onClick={onClose}>
             <div className="relative w-full max-w-3xl shadow-2xl rounded-xl bg-white flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
@@ -133,8 +176,8 @@ const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ onClose, onSave, 
                         <InputField label="Inventory Code" name="inventory_code" value={formData.inventory_code} onChange={()=>{}} disabled />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <SelectField label="Equipment Type" name="equipment_type_id" value={formData.equipment_type_id || ''} onChange={handleInputChange} options={EQUIPMENT_TYPES.map(t => ({ value: t.equipment_type_id, label: t.type_name }))} required />
-                        <SelectField label="Manufacturer" name="manufacturer_id" value={formData.manufacturer_id || ''} onChange={handleInputChange} options={MANUFACTURERS.map(m => ({ value: m.manufacturer_id, label: m.manufacturer_name }))} required />
+                        <SelectField label="Equipment Type" name="equipment_type_id" value={formData.equipment_type_id || ''} onChange={handleInputChange} options={referenceData.equipmentTypes.map(t => ({ value: t.equipment_type_id, label: t.type_name }))} required />
+                        <SelectField label="Manufacturer" name="manufacturer_id" value={formData.manufacturer_id || ''} onChange={handleInputChange} options={referenceData.manufacturers.map(m => ({ value: m.manufacturer_id, label: m.manufacturer_name }))} required />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <InputField label="Model Number" name="model_number" value={formData.model_number} onChange={handleInputChange} required />
@@ -144,7 +187,7 @@ const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ onClose, onSave, 
                     <div className="space-y-4">
                         <h4 className="font-semibold text-md text-gray-800 border-t pt-6">Location</h4>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <SelectField label="Building" name="building_id" value={selectedBuilding} onChange={handleBuildingChange} options={BUILDINGS.map(b => ({ value: b.building_id, label: b.building_name }))} required />
+                            <SelectField label="Building" name="building_id" value={selectedBuilding} onChange={handleBuildingChange} options={referenceData.buildings.map(b => ({ value: b.building_id, label: b.building_name }))} required />
                             <SelectField label="Department" name="department_id" value={selectedDepartment} onChange={handleDepartmentChange} options={filteredDepartments.map(d => ({ value: d.department_id, label: d.dept_name }))} required />
                             <SelectField label="Room" name="room_id" value={formData.room_id || ''} onChange={handleInputChange} options={filteredRooms.map(r => ({ value: r.room_id, label: r.room_name }))} required />
                         </div>
@@ -166,7 +209,7 @@ const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ onClose, onSave, 
                             <InputField label="Warranty Expiry" name="warranty_expiry_date" value={formData.warranty_expiry_date || ''} onChange={handleInputChange} type="date" />
                             <InputField label="Year Manufactured" name="year_manufactured" value={formData.year_manufactured || ''} onChange={handleInputChange} type="number" required />
                         </div>
-                         <SelectField label="Funding Source" name="funding_id" value={formData.funding_id || ''} onChange={handleInputChange} options={FUNDING_SOURCES.map(f => ({ value: f.funding_id, label: f.funding_name }))} />
+                         <SelectField label="Funding Source" name="funding_id" value={formData.funding_id || ''} onChange={handleInputChange} options={referenceData.fundingSources.map(f => ({ value: f.funding_id, label: f.funding_name }))} />
                     </div>
                 </form>
                 <div className="flex justify-end gap-3 p-6 border-t bg-gray-50 rounded-b-xl">

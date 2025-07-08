@@ -9,11 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.8.0",
+    "@supabase/supabase-js": "^2.50.3",
+    "qrcode": "^1.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "@google/genai": "^1.8.0",
-    "recharts": "^3.0.2",
-    "qrcode": "^1.5.3"
+    "recharts": "^3.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

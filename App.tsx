@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { EQUIPMENT_DATA, MANUFACTURER_MAP, EQUIPMENT_TYPE_MAP } from './constants';
+import { MANUFACTURER_MAP, EQUIPMENT_TYPE_MAP } from './constants';
 import type { Equipment, EquipmentFilter, ToastType, EquipmentFormData } from './types';
 import Dashboard from './components/Dashboard';
 import EquipmentTable from './components/EquipmentTable';
@@ -9,9 +9,10 @@ import EquipmentDetailModal from './components/EquipmentDetailModal';
 import AddEquipmentModal from './components/AddEquipmentModal';
 import Toast from './components/Toast';
 import { getFiltersFromQuery } from './services/geminiService';
+import { fetchAllEquipment, addEquipment } from './services/equipmentService';
 
 const App: React.FC = () => {
-    const [equipmentList, setEquipmentList] = useState<Equipment[]>(EQUIPMENT_DATA);
+    const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
     const [aiFilters, setAiFilters] = useState<EquipmentFilter>({});
     const [dashboardFilters, setDashboardFilters] = useState<EquipmentFilter>({});
     const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +21,22 @@ const App: React.FC = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [toast, setToast] = useState<ToastType | null>(null);
 
+    // Load equipment data on component mount
+    React.useEffect(() => {
+        const loadEquipment = async () => {
+            try {
+                setIsLoading(true);
+                const equipment = await fetchAllEquipment();
+                setEquipmentList(equipment);
+            } catch (err) {
+                setError('Failed to load equipment data');
+                console.error(err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadEquipment();
+    }, []);
 
     const handleSearch = useCallback(async (query: string) => {
         if (!query.trim()) {
@@ -91,18 +108,18 @@ const App: React.FC = () => {
       setSelectedEquipment(null);
     }
     
-    const handleAddNewEquipment = (formData: EquipmentFormData) => {
-        const newEquipment: Equipment = {
-            ...formData,
-            equipment_id: Date.now(), // Simple unique ID
-            purchase_price: parseFloat(formData.purchase_price || '0'),
-            current_value: parseFloat(formData.current_value || '0'),
-            year_manufactured: parseInt(formData.year_manufactured || new Date().getFullYear().toString(), 10),
-        };
-        setEquipmentList(prev => [newEquipment, ...prev]);
-        setIsAddModalOpen(false);
-        setToast({ message: "Equipment added successfully!", type: 'success' });
-        setTimeout(() => setToast(null), 3000);
+    const handleAddNewEquipment = async (formData: EquipmentFormData) => {
+        try {
+            const newEquipment = await addEquipment(formData);
+            setEquipmentList(prev => [newEquipment, ...prev]);
+            setIsAddModalOpen(false);
+            setToast({ message: "Equipment added successfully!", type: 'success' });
+            setTimeout(() => setToast(null), 3000);
+        } catch (err) {
+            setToast({ message: "Failed to add equipment. Please try again.", type: 'error' });
+            setTimeout(() => setToast(null), 3000);
+            console.error('Error adding equipment:', err);
+        }
     };
 
     return (
